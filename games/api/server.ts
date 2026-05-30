@@ -1,15 +1,31 @@
 /**
  * local server entry file, for local development
  */
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import app from './app.js';
+import { setupSocketHandlers } from './socket/handler.js';
+import type { ClientToServerEvents, ServerToClientEvents } from '../shared/types.js';
 
 /**
  * start server with port
  */
 const PORT = process.env.PORT || 3001;
 
-const server = app.listen(PORT, () => {
+const httpServer = createServer(app);
+
+const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+
+setupSocketHandlers(io);
+
+httpServer.listen(PORT, () => {
   console.log(`Server ready on port ${PORT}`);
+  console.log(`Socket.IO server running`);
 });
 
 /**
@@ -17,7 +33,7 @@ const server = app.listen(PORT, () => {
  */
 process.on('SIGTERM', () => {
   console.log('SIGTERM signal received');
-  server.close(() => {
+  httpServer.close(() => {
     console.log('Server closed');
     process.exit(0);
   });
@@ -25,10 +41,11 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   console.log('SIGINT signal received');
-  server.close(() => {
+  httpServer.close(() => {
     console.log('Server closed');
     process.exit(0);
   });
 });
 
+export { httpServer, io };
 export default app;
